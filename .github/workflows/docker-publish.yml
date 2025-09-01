@@ -47,8 +47,6 @@ jobs:
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-') }}
             # edge for default branch builds
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
-            # always include a short sha tag for traceability
-            type=sha,format=short
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}

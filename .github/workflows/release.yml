@@ -1,0 +1,106 @@
+name: Release (SemVer)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      pre_release:
+        description: "Create a pre-release (e.g. -rc.1)"
+        type: boolean
+        default: false
+      preid:
+        description: "Pre-release identifier (rc, beta, alpha)"
+        type: string
+        default: rc
+      initial_version:
+        description: "Starting version when no tag exists (e.g. 0.0.0 or 1.0.0)"
+        type: string
+        default: 0.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version (SemVer)
+        id: semver
+        shell: bash
+        run: |
+          set -euo pipefail
+          bump='${{ inputs.bump }}'
+          pre_release='${{ inputs.pre_release }}'
+          preid='${{ inputs.preid }}'
+          initial='${{ inputs.initial_version }}'
+
+          # Find latest stable tag (vMAJOR.MINOR.PATCH)
+          latest_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)
+          if [[ -z "$latest_tag" ]]; then
+            base="$initial"
+          else
+            base="${latest_tag#v}"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<<"$base"
+          if ! [[ $MAJOR =~ ^[0-9]+$ && $MINOR =~ ^[0-9]+$ && $PATCH =~ ^[0-9]+$ ]]; then
+            echo "Invalid base version: $base" >&2
+            exit 1
+          fi
+
+          case "$bump" in
+            major)
+              MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor)
+              MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch)
+              PATCH=$((PATCH+1)) ;;
+            *) echo "Unknown bump: $bump" >&2; exit 1 ;;
+          esac
+
+          version="${MAJOR}.${MINOR}.${PATCH}"
+
+          if [[ "$pre_release" == "true" ]]; then
+            # Determine next pre-release number for this base+preid
+            existing=$(git tag -l "v${version}-${preid}.*" | sed -E "s/.*-${preid}\.([0-9]+)$/\1/" | sort -n | tail -n1)
+            if [[ -z "$existing" ]]; then
+              n=1
+            else
+              n=$((existing+1))
+            fi
+            version+="-${preid}.${n}"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $version"
+
+      - name: Create and push tag
+        env:
+          NEW_VERSION: ${{ steps.semver.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tag="v${NEW_VERSION}"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.semver.outputs.version }}
+          name: v${{ steps.semver.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ inputs.pre_release }}
+
+      # Note: Docker image build & push happen in docker-publish.yml on tag push
+
