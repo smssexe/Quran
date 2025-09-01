@@ -1,6 +1,8 @@
 name: Release (SemVer)
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       bump:
@@ -38,10 +40,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Inputs only exist for workflow_dispatch; provide defaults for push
           bump='${{ inputs.bump }}'
           pre_release='${{ inputs.pre_release }}'
           preid='${{ inputs.preid }}'
           initial='${{ inputs.initial_version }}'
+          # Repo variable fallback for initial version (Settings -> Variables -> Actions -> INITIAL_VERSION)
+          if [[ -z "${initial}" ]]; then initial='${{ vars.INITIAL_VERSION }}'; fi
+          if [[ -z "${initial}" ]]; then initial='0.0.0'; fi
+
+          # Auto-detect bump on push to main using Conventional Commits
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            last_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)
+            if [[ -n "$last_tag" ]]; then range="$last_tag..HEAD"; else range=""; fi
+            log=$(git log --no-merges --pretty=format:%s ${range:-} || true)
+            # Normalize to lowercase for checks
+            lcase=$(printf '%s\n' "$log" | tr '[:upper:]' '[:lower:]')
+            if echo "$log" | grep -qE '(^|\n).*!:' || echo "$lcase" | grep -q 'breaking change'; then
+              bump='major'
+            elif echo "$lcase" | grep -q '^feat'; then
+              bump='minor'
+            elif echo "$lcase" | grep -Eq '^(fix|perf)'; then
+              bump='patch'
+            else
+              bump='patch'
+            fi
+            # Default: auto releases are stable (no pre-release)
+            pre_release='false'
+          fi
 
           # Find latest stable tag (vMAJOR.MINOR.PATCH)
           latest_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)
@@ -101,6 +127,9 @@ jobs:
           name: v${{ steps.semver.outputs.version }}
           generate_release_notes: true
           prerelease: ${{ inputs.pre_release }}
+          body: |
+            Docker image:
+            - docker pull smssexe/quran:${{ steps.semver.outputs.version }}
+            - docker pull smssexe/quran:${{ steps.semver.outputs.version }} # major/minor variants added automatically for stable
 
       # Note: Docker image build & push happen in docker-publish.yml on tag push
-

@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Set your Docker Hub repository via repo secret, e.g. "mohammad/quran"
-  DOCKERHUB_REPOSITORY: ${{ secrets.DOCKERHUB_REPOSITORY }}
+  # Docker Hub repository to push to
+  DOCKERHUB_REPOSITORY: smssexe/quran
 
 jobs:
   build-and-push:
