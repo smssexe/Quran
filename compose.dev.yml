@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    env_file:
+      - .env
+    environment:
+      # Sensible local defaults; override in .env if needed
+      DEBUG: "true"
+      ALLOWED_HOSTS: "*"
+      # SQLITE_PATH will default to /app/db.sqlite3; keep it persisted via volume mount
+    ports:
+      - "5000:8000"  # host:container
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
