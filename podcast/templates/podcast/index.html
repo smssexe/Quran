@@ -1,15 +1,108 @@
 {% extends "base.html" %}
-{% block title %}فهرست اپیزودها{% endblock %}
+{% block title %}آخرین فایل‌های صوتی{% endblock %}
 {% block content %}
-<ul>
-  {% for a in items %}
-    <li>
-      <a href="{% url 'detail' a.slug %}">{{ a.title }}</a>
-      {% if a.series %} — سری: {{ a.series.title }}{% endif %}
-      {% if a.speaker %} — گوینده: {{ a.speaker.name }}{% endif %}
-    </li>
-  {% empty %}
-    <li>موردی نیست.</li>
-  {% endfor %}
-</ul>
+
+<section>
+  <h2 style="margin-top:0">آخرین فایل‌های صوتی</h2>
+  <p style="color:#666">برای پخش روی دکمه پخش هر آیتم بزنید. برای جزئیات به صفحهٔ خود آیتم بروید.</p>
+
+  <div id="player-panel" style="position:sticky;top:0;background:#fff;border:1px solid #eee;padding:12px;border-radius:8px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button id="global-play" disabled style="padding:6px 12px">▶️ پخش</button>
+      <div id="now-playing" style="flex:1;color:#333">موردی انتخاب نشده است</div>
+    </div>
+    <audio id="player" controls style="width:100%;margin-top:8px"></audio>
+  </div>
+
+  <ul id="episodes" style="list-style:none;padding:0;margin:0">
+    {% for a in items %}
+      <li class="episode" data-slug="{{ a.slug }}" style="padding:10px 8px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px">
+        <button class="play" data-slug="{{ a.slug }}" style="padding:4px 10px">▶️</button>
+        <div style="flex:1">
+          <div style="font-weight:600"><a href="{% url 'detail' a.slug %}">{{ a.title }}</a></div>
+          <div style="font-size:12px;color:#666">
+            {% if a.series %}سری: {{ a.series.title }}{% endif %}
+            {% if a.speaker %}{% if a.series %} • {% endif %}سخنران: {{ a.speaker.name }}{% endif %}
+          </div>
+        </div>
+        <a href="{% url 'detail' a.slug %}" style="font-size:12px">جزئیات</a>
+      </li>
+    {% empty %}
+      <li>موردی موجود نیست.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<p style="margin-top:16px"><a href="{% url 'rss' %}">RSS</a></p>
+
+<script>
+  (function() {
+    const list = document.getElementById('episodes');
+    const player = document.getElementById('player');
+    const nowEl = document.getElementById('now-playing');
+    const globalBtn = document.getElementById('global-play');
+    let currentSlug = null;
+    let currentTitle = '';
+
+    async function fetchUrl(slug) {
+      const r = await fetch(`/a/${slug}/stream-url/`);
+      if (!r.ok) throw new Error('network');
+      const j = await r.json();
+      if (!j.url) throw new Error('no-url');
+      return j.url;
+    }
+
+    async function playSlug(slug, title) {
+      try {
+        const url = await fetchUrl(slug);
+        player.src = url;
+        currentSlug = slug;
+        currentTitle = title || '';
+        highlight(slug);
+        nowEl.textContent = title || 'در حال پخش';
+        globalBtn.disabled = false;
+        await player.play();
+      } catch (e) {
+        console.error(e);
+        alert('خطا در دریافت لینک پخش');
+      }
+    }
+
+    function highlight(slug) {
+      document.querySelectorAll('.episode').forEach(li => {
+        li.style.background = li.dataset.slug === slug ? '#fafafa' : 'transparent';
+      });
+    }
+
+    list.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('button.play');
+      if (!btn) return;
+      const slug = btn.dataset.slug;
+      const container = btn.closest('.episode');
+      const titleEl = container.querySelector('a');
+      const title = titleEl ? titleEl.textContent : '';
+      playSlug(slug, title);
+    });
+
+    globalBtn.addEventListener('click', () => {
+      if (!currentSlug) return;
+      if (player.paused) player.play(); else player.pause();
+    });
+
+    // Optional: Media Session for nicer controls
+    if ('mediaSession' in navigator) {
+      function updateMetadata() {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentTitle || 'پخش صوت',
+          artist: '',
+          album: 'پادکست',
+        });
+      }
+      player.addEventListener('play', updateMetadata);
+      player.addEventListener('loadedmetadata', updateMetadata);
+    }
+  })();
+</script>
+
 {% endblock %}
+
