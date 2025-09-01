@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}فهرست اپیزودها{% endblock %}
+{% block content %}
+<ul>
+  {% for a in items %}
+    <li>
+      <a href="{% url 'detail' a.slug %}">{{ a.title }}</a>
+      {% if a.series %} — سری: {{ a.series.title }}{% endif %}
+      {% if a.speaker %} — گوینده: {{ a.speaker.name }}{% endif %}
+    </li>
+  {% empty %}
+    <li>موردی نیست.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<h2>{{ item.title }}</h2>
+<p>{{ item.description }}</p>
+<button id="play">دریافت لینک پخش</button>
+<audio id="player" controls style="display:block;margin-top:12px"></audio>
+<script>
+  document.getElementById('play').addEventListener('click', async () => {
+    const r = await fetch(window.location.pathname + 'stream-url/');
+    const j = await r.json();
+    if (j.url) {
+      const audio = document.getElementById('player');
+      audio.src = j.url; // presigned / CDN
+      audio.play();
+    } else { alert('فایلی یافت نشد'); }
+  });
+</script>
+{% endblock %}
