@@ -59,15 +59,18 @@ jobs:
           smssexe/quran:v${{ steps.get_tag.outputs.version }}
 
     - name: Send Telegram message (optional)
-      if: ${{ secrets.TELEGRAM_BOT_TOKEN && secrets.TELEGRAM_CHAT_ID }}
       run: |
+        if [ -z "${TELEGRAM_BOT_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
+          echo "Telegram secrets not set; skipping notification.";
+          exit 0;
+        fi
         STATUS="✅ Build and Release Successful!"
         if [ "${{ job.status }}" != "success" ]; then
           STATUS="❌ Build or Release Failed!"
         fi
         MESSAGE="[$STATUS] Repo: $REPO%0AWorkflow: $WORKFLOW%0ARef: $REF%0ACommit: $SHA%0ABy: $ACTOR%0AVersion: $VERSION"
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d chat_id="${TELEGRAM_CHAT_ID}" \
           -d text="$MESSAGE"
       env:
         REPO: ${{ github.repository }}
@@ -76,3 +79,5 @@ jobs:
         SHA: ${{ github.sha }}
         ACTOR: ${{ github.actor }}
         VERSION: ${{ steps.get_tag.outputs.version }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
