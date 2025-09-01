@@ -35,13 +35,25 @@ ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# DB: SQLite for quick start
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+# Database: SQLite by default; Postgres if DB_ENGINE=postgres
+if os.environ.get("DB_ENGINE", "sqlite").lower() == "postgres":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "quran"),
+            "USER": os.environ.get("POSTGRES_USER", "quran"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "quran"),
+            "HOST": os.environ.get("POSTGRES_HOST", "db"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        }
+    }
 
 TEMPLATES = [
     {
@@ -64,7 +76,7 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# S3 storage for media
+# S3 storage for media (MinIO-compatible when ENV points there)
 DEFAULT_FILE_STORAGE = "podcast.storage_backends.MediaStorage"
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")

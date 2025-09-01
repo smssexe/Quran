@@ -1,15 +1,75 @@
 services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: quran
+      POSTGRES_USER: quran
+      POSTGRES_PASSWORD: quran
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+    restart: unless-stopped
+
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+      AWS_STORAGE_BUCKET_NAME: quran-media
+    entrypoint: ["/bin/sh","-c"]
+    command: >
+      mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD &&
+      mc mb -p local/$AWS_STORAGE_BUCKET_NAME || true
+    restart: "no"
+
   web:
     build: .
     env_file:
       - .env
     environment:
-      # Ensure app listens on 8000 and runs in dev-friendly mode unless overridden
+      # App
       PORT: "8000"
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
+      # Database (switch settings to Postgres)
+      DB_ENGINE: postgres
+      POSTGRES_DB: quran
+      POSTGRES_USER: quran
+      POSTGRES_PASSWORD: quran
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      # Object storage via MinIO (S3-compatible)
+      AWS_STORAGE_BUCKET_NAME: quran-media
+      AWS_S3_REGION_NAME: us-east-1
+      AWS_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio12345
+      # Optional CDN override left empty for local
+      CDN_BASE_URL: ""
     ports:
-      - "8000:8000"  # host:container
+      - "8000:8000"
     volumes:
       - .:/app
+    depends_on:
+      - db
+      - minio
+      - createbucket
     restart: unless-stopped
+
+volumes:
+  pgdata:
+  minio:
