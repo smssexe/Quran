@@ -1,27 +1,8 @@
-name: Release (SemVer)
+name: Build & Release Docker Image
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: "Version bump type"
-        type: choice
-        options: [patch, minor, major]
-        default: patch
-      pre_release:
-        description: "Create a pre-release (e.g. -rc.1)"
-        type: boolean
-        default: false
-      preid:
-        description: "Pre-release identifier (rc, beta, alpha)"
-        type: string
-        default: rc
-      initial_version:
-        description: "Starting version when no tag exists (e.g. 0.0.0 or 1.0.0)"
-        type: string
-        default: 0.0.0
+    branches: [ "main" ]
 
 permissions:
   contents: write
@@ -30,106 +11,68 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-      - name: Compute next version (SemVer)
-        id: semver
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Inputs only exist for workflow_dispatch; provide defaults for push
-          bump='${{ inputs.bump }}'
-          pre_release='${{ inputs.pre_release }}'
-          preid='${{ inputs.preid }}'
-          initial='${{ inputs.initial_version }}'
-          # Repo variable fallback for initial version (Settings -> Variables -> Actions -> INITIAL_VERSION)
-          if [[ -z "${initial}" ]]; then initial='${{ vars.INITIAL_VERSION }}'; fi
-          if [[ -z "${initial}" ]]; then initial='0.0.0'; fi
+    - name: Get latest tag and compute next patch
+      id: get_tag
+      run: |
+        git fetch --tags
+        latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+        echo "Latest tag: $latest_tag"
+        if [ -z "$latest_tag" ]; then
+          echo "version=0.0.1" >> $GITHUB_OUTPUT
+        else
+          IFS='.' read -r major minor patch <<< "${latest_tag#v}"
+          patch=$((patch + 1))
+          echo "version=${major}.${minor}.${patch}" >> $GITHUB_OUTPUT
+        fi
 
-          # Auto-detect bump on push to main using Conventional Commits
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            last_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)
-            if [[ -n "$last_tag" ]]; then range="$last_tag..HEAD"; else range=""; fi
-            log=$(git log --no-merges --pretty=format:%s ${range:-} || true)
-            # Normalize to lowercase for checks
-            lcase=$(printf '%s\n' "$log" | tr '[:upper:]' '[:lower:]')
-            if echo "$log" | grep -qE '(^|\n).*!:' || echo "$lcase" | grep -q 'breaking change'; then
-              bump='major'
-            elif echo "$lcase" | grep -q '^feat'; then
-              bump='minor'
-            elif echo "$lcase" | grep -Eq '^(fix|perf)'; then
-              bump='patch'
-            else
-              bump='patch'
-            fi
-            # Default: auto releases are stable (no pre-release)
-            pre_release='false'
-          fi
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.get_tag.outputs.version }}
+        name: Release v${{ steps.get_tag.outputs.version }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          # Find latest stable tag (vMAJOR.MINOR.PATCH)
-          latest_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)
-          if [[ -z "$latest_tag" ]]; then
-            base="$initial"
-          else
-            base="${latest_tag#v}"
-          fi
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-          IFS='.' read -r MAJOR MINOR PATCH <<<"$base"
-          if ! [[ $MAJOR =~ ^[0-9]+$ && $MINOR =~ ^[0-9]+$ && $PATCH =~ ^[0-9]+$ ]]; then
-            echo "Invalid base version: $base" >&2
-            exit 1
-          fi
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-          case "$bump" in
-            major)
-              MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
-            minor)
-              MINOR=$((MINOR+1)); PATCH=0 ;;
-            patch)
-              PATCH=$((PATCH+1)) ;;
-            *) echo "Unknown bump: $bump" >&2; exit 1 ;;
-          esac
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: |
+          smssexe/quran:latest
+          smssexe/quran:${{ steps.get_tag.outputs.version }}
+          smssexe/quran:v${{ steps.get_tag.outputs.version }}
 
-          version="${MAJOR}.${MINOR}.${PATCH}"
-
-          if [[ "$pre_release" == "true" ]]; then
-            # Determine next pre-release number for this base+preid
-            existing=$(git tag -l "v${version}-${preid}.*" | sed -E "s/.*-${preid}\.([0-9]+)$/\1/" | sort -n | tail -n1)
-            if [[ -z "$existing" ]]; then
-              n=1
-            else
-              n=$((existing+1))
-            fi
-            version+="-${preid}.${n}"
-          fi
-
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Computed version: $version"
-
-      - name: Create and push tag
-        env:
-          NEW_VERSION: ${{ steps.semver.outputs.version }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          tag="v${NEW_VERSION}"
-          git tag -a "$tag" -m "Release $tag"
-          git push origin "$tag"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.semver.outputs.version }}
-          name: v${{ steps.semver.outputs.version }}
-          generate_release_notes: true
-          prerelease: ${{ inputs.pre_release }}
-          body: |
-            Docker image:
-            - docker pull smssexe/quran:${{ steps.semver.outputs.version }}
-            - docker pull smssexe/quran:${{ steps.semver.outputs.version }} # major/minor variants added automatically for stable
-
-      # Note: Docker image build & push happen in docker-publish.yml on tag push
+    - name: Send Telegram message (optional)
+      if: ${{ secrets.TELEGRAM_BOT_TOKEN && secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        STATUS="✅ Build and Release Successful!"
+        if [ "${{ job.status }}" != "success" ]; then
+          STATUS="❌ Build or Release Failed!"
+        fi
+        MESSAGE="[$STATUS] Repo: $REPO%0AWorkflow: $WORKFLOW%0ARef: $REF%0ACommit: $SHA%0ABy: $ACTOR%0AVersion: $VERSION"
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="$MESSAGE"
+      env:
+        REPO: ${{ github.repository }}
+        WORKFLOW: ${{ github.workflow }}
+        REF: ${{ github.ref_name }}
+        SHA: ${{ github.sha }}
+        ACTOR: ${{ github.actor }}
+        VERSION: ${{ steps.get_tag.outputs.version }}
