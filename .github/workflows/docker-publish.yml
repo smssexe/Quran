@@ -3,7 +3,9 @@ name: Docker CI/CD
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*', 'release-*' ]
+    tags:
+      - 'v*.*.*'       # SemVer tags like v1.2.3
+      - 'v*.*.*-*'     # Pre-release like v1.2.3-rc.1
   pull_request:
     branches: [ main ]
 
@@ -36,8 +38,15 @@ jobs:
         with:
           images: ${{ env.DOCKERHUB_REPOSITORY }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=tag
+            # SemVer tags when pushing annotated tags like v1.2.3 or v1.2.3-rc.1
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable={{!is_prerelease}}
+            type=semver,pattern={{major}},enable={{!is_prerelease}}
+            # latest only for stable releases (no pre-release)
+            type=raw,value=latest,enable={{is_tag && !is_prerelease}}
+            # edge for default branch builds
+            type=raw,value=edge,enable={{is_default_branch}}
+            # always include a short sha tag for traceability
             type=sha,format=short
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -50,14 +59,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build (PRs) / Build and Push (main/tags)
+      - name: Build (PRs) / Push (main & tags)
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
+          # Push for tags and main; PRs build only
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
