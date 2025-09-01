@@ -16,3 +16,7 @@ RUN pip install -r requirements.txt
 COPY . .
 
 EXPOSE 8000
+ENV PORT=8000
+
+# Default command: migrate DB, collect static, and run Gunicorn
+CMD ["/bin/sh","-lc","python manage.py migrate && python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application -b 0.0.0.0:$PORT --workers 2"]
