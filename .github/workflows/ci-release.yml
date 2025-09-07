@@ -22,10 +22,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install deps
-        run: npm ci --legacy-peer-deps
+      - name: Install deps (ci if lockfile exists, else install)
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps
+          fi
 
       - name: Lint
         run: npm run lint --if-present
@@ -48,7 +52,7 @@ jobs:
     name: Docker Build & Push
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' # skip on PRs
+    if: github.event_name == 'push'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

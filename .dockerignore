@@ -1,4 +1,3 @@
-# Node / Next
 node_modules
 npm-debug.log
 yarn-error.log
@@ -6,13 +5,10 @@ yarn-error.log
 .next/trace
 .next/types
 out
-# Git
 .git
 .gitignore
-# OS
 .DS_Store
 Thumbs.db
-# Misc
 *.local
 *.env
 .env*
