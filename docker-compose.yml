@@ -1,42 +1,10 @@
+version: '3.9'
 services:
-  db:
-    image: postgres:17.6
-    environment:
-      POSTGRES_DB: quran
-      POSTGRES_USER: quran
-      POSTGRES_PASSWORD: quran
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
   web:
-    image: smssexe/quran:v0.0.9
-    environment:
-      # App
-      PORT: "8000"
-      DEBUG: "true"
-      ALLOWED_HOSTS: "*"
-      # Database (switch settings to Postgres)
-      DB_ENGINE: postgres
-      POSTGRES_DB: quran
-      POSTGRES_USER: quran
-      POSTGRES_PASSWORD: quran
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
-      # Object storage via MinIO (S3-compatible)
-      # AWS_STORAGE_BUCKET_NAME: quran-media
-      # AWS_S3_REGION_NAME: us-east-1
-      # AWS_S3_ENDPOINT_URL: http://minio:9000
-      # AWS_ACCESS_KEY_ID: minio
-      # AWS_SECRET_ACCESS_KEY: minio12345
-      # Optional CDN override left empty for local
-      CDN_BASE_URL: ""
+    build: .
+    container_name: quran-audio-frontend
     ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
-    depends_on:
-      - db
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
-
-volumes:
-  pgdata:
