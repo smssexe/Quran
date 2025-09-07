@@ -1,7 +1,11 @@
 {
   "name": "quran-audio-frontend",
   "private": true,
+<<<<<<< HEAD
+  "version": "0.3.1",
+=======
   "version": "0.2.1",
+>>>>>>> parent of 3c48ec7 (Add AyahPlayer for Surah Al-Fatiha audio playback)
   "scripts": {
     "dev": "next dev",
     "build": "next build",
