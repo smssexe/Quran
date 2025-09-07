@@ -1,40 +1,8 @@
-# Quran Audio • Frontend MVP (Next.js)
+# Quran Audio • Frontend UX (latest)
 
-فرانت‌اند آزمایشی برای مرور سوره‌ها و اپیزودها (اپیزود = شماره آیه) — بدون بک‌اند.
-
-## اجرای سریع با Docker
+نمونه‌ی UI با پخش‌کننده برای آیه ۱ سوره حمد.
 
 ```bash
 docker compose up --build
-# سپس باز کنید: http://localhost:3000
 ```
-
-## ساختار صفحات
-- `/` — صفحه اصلی
-- `/surahs` — فهرست سوره‌ها (نام + تعداد آیات)
-- `/surahs/[id]` — نمایش اپیزودها بر اساس تعداد آیات (برای تست، تا 300 مورد نمایش داده می‌شود)
-
-## داده‌ها
-لیست سوره‌ها در مسیر `data/surahs.ts` قرار دارد (الآن چند سوره‌ی اول را گذاشته‌ایم). می‌توانید بقیه سوره‌ها را به همان آرایه اضافه کنید.
-
-## CI/CD با GitHub Actions و Docker Hub
-این مخزن شامل workflow آماده است که:
-- روی هر push به `main` بیلد می‌گیرد.
-- روی تگ‌هایی با الگوی `vX.Y.Z` علاوه‌بر بیلد، **Release** می‌سازد و **ایمیج Docker** را به Docker Hub پوش می‌کند.
-
-### تنظیم متغیرهای مخفی (Secrets)
-در GitHub → Settings → Secrets and variables → Actions دو Secret بساز:
-- `DOCKERHUB_USERNAME` — نام کاربری Docker Hub
-- `DOCKERHUB_TOKEN` — Access Token از Docker Hub (نه پسورد)
-
-اگر نام ریپازیتوری‌ت در Docker Hub چیز دیگری است، مقدار `IMAGE_NAME` را در فایل
-`.github/workflows/ci-release.yml` تغییر بده (فرمت: `username/repo`).
-
-### تریگر ریلیز
-برای ساخت نسخه و انتشار ایمیج با تگ نسخه:
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-> نکته: اگر `package-lock.json` در مخزن نباشد، ورک‌فلو به‌صورت خودکار از `npm install` استفاده می‌کند و خطای «lock file not found» رخ نمی‌دهد.
+باز کن: http://localhost:3000

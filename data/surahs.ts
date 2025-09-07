@@ -1,8 +1,4 @@
-export type Surah = {
-  id: number;
-  name: string;
-  ayahCount: number;
-};
+export type Surah = { id: number; name: string; ayahCount: number; };
 
 export const SURAHS: Surah[] = [
   { id: 1,  name: "الفاتحة", ayahCount: 7 },
@@ -15,5 +11,4 @@ export const SURAHS: Surah[] = [
   { id: 8,  name: "الأنفال", ayahCount: 75 },
   { id: 9,  name: "التوبة", ayahCount: 129 },
   { id: 10, name: "يونس", ayahCount: 109 },
-  // ... ادامه 114 سوره را می‌توانید اضافه کنید
 ];

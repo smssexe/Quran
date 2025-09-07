@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="container">
           <header className="header">
-            <div className="brand">Quran Audio</div>
+            <div className="brand">Quran<span className="dot">•</span>Audio</div>
             <nav className="nav">
               <Link href="/">خانه</Link>
               <Link href="/surahs">سوره‌ها</Link>
