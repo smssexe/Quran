@@ -1,0 +1,18 @@
+# Node / Next
+node_modules
+npm-debug.log
+yarn-error.log
+.next/cache
+.next/trace
+.next/types
+out
+# Git
+.git
+.gitignore
+# OS
+.DS_Store
+Thumbs.db
+# Misc
+*.local
+*.env
+.env*
