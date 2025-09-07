@@ -2,13 +2,13 @@ name: CI • Build • Release • DockerHub
 
 on:
   push:
-    branches: ["nextjs"]
-    tags: ["v*.*.*"]
+    branches: [ "nextjs" ]
+    tags: [ "v*.*.*" ]
   pull_request:
-    branches: ["nextjs"]
+    branches: [ "nextjs" ]
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/quran
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/quran-audio-frontend
 
 jobs:
   build:
@@ -41,6 +41,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Notify Telegram (build status)
+        if: always()
+        run: |
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            STATUS="✅ Build passed"
+            if [ "${{ job.status }}" != "success" ]; then STATUS="❌ Build failed"; fi
+            MSG="*${{ github.repository }}*\nJob: *Build*\nBranch/Ref: \`${{ github.ref }}\`\nCommit: \`${{ github.sha }}\`\nStatus: ${STATUS}"
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"               -d parse_mode="Markdown"               --data-urlencode "text=${MSG}" >/dev/null || true
+          fi
+
   docker:
     name: Docker Build & Push
     needs: build
@@ -52,8 +62,10 @@ jobs:
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
+          registry: docker.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
@@ -69,7 +81,9 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push
+        id: buildpush
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -77,13 +91,35 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Notify Telegram (docker status)
+        if: always()
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            STATUS="✅ Docker push succeeded"
+            if [ "${{ job.status }}" != "success" ]; then STATUS="❌ Docker push failed"; fi
+            MSG="*${{ github.repository }}*\nJob: *Docker*\nImage: \`${{ env.IMAGE_NAME }}\`\nTags:\n\`${TAGS}\`\nBranch/Ref: \`${{ github.ref }}\`\nCommit: \`${{ github.sha }}\`\nStatus: ${STATUS}"
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"               -d parse_mode="Markdown"               --data-urlencode "text=${MSG}" >/dev/null || true
+          fi
+
   release:
     name: GitHub Release (on tag)
     runs-on: ubuntu-latest
-    needs: [build, docker]
+    needs: [ build, docker ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+
+      - name: Notify Telegram (release status)
+        if: always()
+        run: |
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            STATUS="✅ Release created"
+            if [ "${{ job.status }}" != "success" ]; then STATUS="❌ Release failed"; fi
+            MSG="*${{ github.repository }}*\nJob: *Release*\nTag: \`${{ github.ref_name }}\`\nStatus: ${STATUS}"
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"               -d parse_mode="Markdown"               --data-urlencode "text=${MSG}" >/dev/null || true
+          fi
