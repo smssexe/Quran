@@ -50,7 +50,7 @@ export default function AyahPlayer({
         })}
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
-        آیهٔ ۱ از طریق پلیر آروان پخش می‌شود؛ اینجا از آیهٔ ۲ به بعد فعال است.
+        برای سورهٔ حمد، هر ۷ آیه لینک صوتی دارد.
       </p>
     </section>
   );

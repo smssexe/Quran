@@ -1,11 +1,11 @@
-# Quran Audio • Frontend (Al-Fatiha: Arvan VOD for ayah 1)
+# Quran Audio • Frontend (Surah Al-Fatiha full audio demo)
 
-- آیهٔ ۱ سورهٔ حمد با iframe رسمی VOD ابر آروان
-- آیه‌های ۲ تا ۷ با پلیر داخلی HTML5
-- لینک مستقیم به پلیر آروان: `/surahs/1#arvan`
+- سورهٔ حمد با پخش آنلاین هر ۷ آیه
+- رابط کاربری به‌روز
+- بدون بک‌اند
 
 ## اجرا
 ```bash
 docker compose up --build
-# http://localhost:3000 → Surahs → الفاتحة
+# http://localhost:3000  → Surahs → الفاتحة
 ```

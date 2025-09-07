@@ -1,16 +1,13 @@
 import { notFound } from 'next/navigation';
 import { SURAHS } from '../../../data/surahs';
-import ArvanIframe from '../../../components/ArvanIframe';
 import AyahPlayer from '../../../components/AyahPlayer';
 
 export async function generateStaticParams() {
   return SURAHS.map(s => ({ id: String(s.id) }));
 }
 
-const ARVAN_CONFIG_URL =
-  'https://cast-quran.arvanvod.ir/VPRp1GvAwj/4Vy7mVAkwY/origin_config.json';
-
-const SURAH1_SOURCES_INTERNAL: Record<number, string> = {
+const SURAH1_SOURCES: Record<number, string> = {
+  1: "https://tafsir-quran.s3.ir-thr-at1.arvanstorage.ir/1/001001.mp3",
   2: "https://tafsir-quran.s3.ir-thr-at1.arvanstorage.ir/1/001002.mp3",
   3: "https://tafsir-quran.s3.ir-thr-at1.arvanstorage.ir/1/001003.mp3",
   4: "https://tafsir-quran.s3.ir-thr-at1.arvanstorage.ir/1/001004.mp3",
@@ -29,24 +26,14 @@ export default function SurahDetail({ params }: { params: { id: string } }) {
   return (
     <main>
       <h1>{surah.name}</h1>
-      <p className="muted">آیهٔ ۱ با پلیر آروان، آیه‌های ۲ تا {total} با پلیر داخلی.</p>
-
-      {surah.id === 1 && (
-        <section id="arvan" className="player">
-          <h4>پخش از VOD ابر آروان — آیه ۱</h4>
-          <ArvanIframe
-            configUrl={ARVAN_CONFIG_URL}
-            title="سوره 1. حمد آیه 1"
-          />
-        </section>
-      )}
+      <p className="muted">اپیزودها بر اساس شماره آیه (۱ تا {total})</p>
 
       {surah.id === 1 ? (
         <AyahPlayer
-          title="سورهٔ حمد (آیات ۲ تا ۷)"
+          title="سورهٔ حمد"
           totalAyah={total}
-          sources={SURAH1_SOURCES_INTERNAL}
-          defaultAyah={2}
+          sources={SURAH1_SOURCES}
+          defaultAyah={1}
         />
       ) : (
         <p className="muted">برای این سوره فعلاً صوتی تنظیم نشده است.</p>
