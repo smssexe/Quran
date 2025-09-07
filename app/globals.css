@@ -62,7 +62,6 @@ h1,h2,h3{letter-spacing:.2px}
 .player h4{margin:0 0 8px 0}
 audio,video{width:100%;outline:none}
 .kicker{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.2em}
-<<<<<<< HEAD
 .ayah-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .ayah-item{
   display:inline-flex;align-items:center;justify-content:center;
@@ -71,5 +70,3 @@ audio,video{width:100%;outline:none}
 }
 .ayah-item.active{border-color:var(--primary);box-shadow:0 0 0 4px var(--ring)}
 .ayah-item:disabled{opacity:.5;cursor:not-allowed}
-=======
->>>>>>> parent of 3c48ec7 (Add AyahPlayer for Surah Al-Fatiha audio playback)
