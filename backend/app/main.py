@@ -39,3 +39,6 @@ def get_current_user(request:Request,db:Session=Depends(get_db))->User:
 @app.get('/me',response_model=UserOut)
 def me(user:User=Depends(get_current_user)):
     return user
+@app.get('/health')
+def health():
+    return {'ok': True}
