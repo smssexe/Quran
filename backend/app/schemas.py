@@ -1,6 +1,14 @@
-from pydantic import BaseModel, EmailStr
+# backend/app/schemas.py
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
-from datetime import datetime  # ← اضافه
+from datetime import datetime
+
+class OTPRequest(BaseModel):
+    identifier: str = Field(..., description="email یا شماره موبایل")
+
+class OTPVerify(BaseModel):
+    identifier: str
+    code: str
 
 class UserOut(BaseModel):
     id: int
@@ -8,7 +16,7 @@ class UserOut(BaseModel):
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    created_at: datetime  # ← قبلاً str بود، الان datetime
+    created_at: datetime
 
     class Config:
         from_attributes = True
