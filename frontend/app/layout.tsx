@@ -22,7 +22,7 @@ export const metadata = { title: 'Quran Audio • Frontend', description: 'Next.
 
 export default function RootLayout({children}:{children:React.ReactNode}) {
   return (
-    <html lang='fa' dir='rtl'>
+    <html lang='فا' dir='rtl'>
       <body>
         <div className='container'>
           <header className='header'>

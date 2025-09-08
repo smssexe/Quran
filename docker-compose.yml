@@ -12,13 +12,12 @@ services:
     environment:
       - DATABASE_URL=sqlite:///./app.db
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-      - JWT_SECRET=dev-secret-change-me
+      # Set at runtime in prod: JWT_SECRET=your-strong-secret
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
     image: quran-frontend:latest
     container_name: quran-frontend
     ports:
