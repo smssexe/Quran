@@ -11,7 +11,7 @@ TOKEN_TTL_DAYS=int(os.getenv('TOKEN_TTL_DAYS','7'))
 def normalize_identifier(identifier:str):
     s=identifier.strip()
     if '@' in s: return 'email', s.lower()
-    phone=''.join(ch for ch in s if ch.isdigit() or ch=='+')
+    phone=''.join(ch for ch in s if ch is not None and (ch.isdigit() or ch=='+'))
     return 'phone', phone
 
 def get_or_create_user(db:Session,id_type:str,value:str)->User:

@@ -1,0 +1,110 @@
+name: Build & Push (Frontend + Backend) + Release + Telegram
+
+on:
+  push:
+    branches: ["nextjs"]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: ["nextjs"]
+
+env:
+  FRONT_IMAGE: ${{ secrets.DOCKER_USERNAME }}/quran-frontend
+  BACK_IMAGE:  ${{ secrets.DOCKER_USERNAME }}/quran-backend
+
+jobs:
+  build-and-push:
+    name: Build & Push ${{ matrix.component }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: frontend
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+            image: ${{ secrets.DOCKER_USERNAME }}/quran-frontend
+          - component: backend
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+            image: ${{ secrets.DOCKER_USERNAME }}/quran-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Telegram — start ${{ matrix.component }}
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🛠 *Build start* — ${{ matrix.component }}\nRepo: ${{ github.repository }}\nRef: ${{ github.ref_name }}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+          flavor: |
+            latest=true
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Telegram — success ${{ matrix.component }}
+        if: ${{ success() && github.event_name != 'pull_request' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="✅ *Build done* — ${{ matrix.component }}\nImage: ${{ matrix.image }}\nTags:\n${{ steps.meta.outputs.tags }}"
+
+      - name: Telegram — failed ${{ matrix.component }}
+        if: ${{ failure() && github.event_name != 'pull_request' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="❌ *Build failed* — ${{ matrix.component }}\nRepo: ${{ github.repository }}\nRef: ${{ github.ref_name }}"
+
+  release:
+    name: Create GitHub Release + Telegram
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            Images pushed:
+            - ${{ env.FRONT_IMAGE }}:${{ github.ref_name }}
+            - ${{ env.BACK_IMAGE }}:${{ github.ref_name }}
+            Also tagged as `latest`.
+
+      - name: Telegram — release
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🚀 *Release* ${{ github.ref_name }} published\nImages:\n- ${{ env.FRONT_IMAGE }}:${{ github.ref_name }}\n- ${{ env.BACK_IMAGE }}:${{ github.ref_name }}"
