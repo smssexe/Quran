@@ -4,13 +4,24 @@ from sqlalchemy.orm import Session
 import logging,os
 from .db import Base,engine,get_db
 from .models import User
-from .schemas import OTPRequest,OTPVerify,UserOut
+from .schemas import OTPRequest,OTPVerify,UserOut,UserUpdate
 from .auth import normalize_identifier,get_or_create_user,create_and_store_otp,verify_otp,issue_token,decode_token
+
 Base.metadata.create_all(bind=engine)
-app=FastAPI(title='Quran Audio Backend',version='0.1.0')
+
+app=FastAPI(title='Quran Audio Backend',version='0.2.0')
+
 origins=os.getenv('CORS_ORIGINS','http://localhost:3000').split(',')
-app.add_middleware(CORSMiddleware,allow_origins=[o.strip() for o in origins if o.strip()],allow_credentials=True,allow_methods=['*'],allow_headers=['*'])
-logger=logging.getLogger('uvicorn');logger.setLevel(logging.INFO)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in origins if o.strip()],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
+
+logger=logging.getLogger('uvicorn'); logger.setLevel(logging.INFO)
+
 @app.post('/auth/request-otp')
 def request_otp(payload:OTPRequest,db:Session=Depends(get_db)):
     id_type,value=normalize_identifier(payload.identifier)
@@ -19,6 +30,7 @@ def request_otp(payload:OTPRequest,db:Session=Depends(get_db)):
     code=create_and_store_otp(db,user)
     logger.info(f"[OTP] identifier={id_type}:{value} user_id={user.id} code={code}")
     return {'ok':True,'message':'OTP created. Check backend logs.'}
+
 @app.post('/auth/verify-otp')
 def verify(payload:OTPVerify,db:Session=Depends(get_db)):
     id_type,value=normalize_identifier(payload.identifier)
@@ -36,9 +48,22 @@ def get_current_user(request:Request,db:Session=Depends(get_db))->User:
     user=db.query(User).filter(User.id==uid).first()
     if not user: raise HTTPException(status_code=404,detail='کاربر یافت نشد')
     return user
-@app.get('/me',response_model=UserOut)
-def me(user:User=Depends(get_current_user)):
+
+@app.get('/me', response_model=UserOut)
+def me(user:User=Depends(get_current_user)): return user
+
+@app.put('/me', response_model=UserOut)
+def update_me(payload: UserUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    changed=False
+    if payload.first_name is not None:
+        user.first_name = payload.first_name.strip() or None
+        changed=True
+    if payload.last_name is not None:
+        user.last_name = payload.last_name.strip() or None
+        changed=True
+    if changed:
+        db.add(user); db.commit(); db.refresh(user)
     return user
+
 @app.get('/health')
-def health():
-    return {'ok': True}
+def health(): return {'ok': True}

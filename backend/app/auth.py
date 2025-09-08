@@ -18,18 +18,15 @@ def get_or_create_user(db:Session,id_type:str,value:str)->User:
     if id_type=='email':
         user=db.query(User).filter(User.email==value).first()
         if not user:
-            user=User(email=value)
-            db.add(user); db.commit(); db.refresh(user)
+            user=User(email=value); db.add(user); db.commit(); db.refresh(user)
         return user
     else:
         user=db.query(User).filter(User.phone==value).first()
         if not user:
-            user=User(phone=value)
-            db.add(user); db.commit(); db.refresh(user)
+            user=User(phone=value); db.add(user); db.commit(); db.refresh(user)
         return user
 
-def hash_code(code:str)->str:
-    return hashlib.sha256(code.encode()).hexdigest()
+def hash_code(code:str)->str: return hashlib.sha256(code.encode()).hexdigest()
 
 def generate_otp_code(n:int=6)->str:
     import random

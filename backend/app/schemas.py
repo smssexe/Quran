@@ -1,4 +1,3 @@
-# backend/app/schemas.py
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
@@ -9,6 +8,10 @@ class OTPRequest(BaseModel):
 class OTPVerify(BaseModel):
     identifier: str
     code: str
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
