@@ -8,7 +8,5 @@ out
 .git
 .gitignore
 .DS_Store
-Thumbs.db
 *.local
-*.env
 .env*
