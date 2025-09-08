@@ -7,10 +7,6 @@ on:
   pull_request:
     branches: ["nextjs"]
 
-env:
-  FRONT_IMAGE: ${{ secrets.DOCKER_USERNAME }}/quran-frontend
-  BACK_IMAGE:  ${{ secrets.DOCKER_USERNAME }}/quran-backend
-
 jobs:
   build-and-push:
     name: Build & Push ${{ matrix.component }}
@@ -22,15 +18,22 @@ jobs:
           - component: frontend
             context: ./frontend
             dockerfile: ./frontend/Dockerfile
-            image: ${{ secrets.DOCKER_USERNAME }}/quran-frontend
           - component: backend
             context: ./backend
             dockerfile: ./backend/Dockerfile
-            image: ${{ secrets.DOCKER_USERNAME }}/quran-backend
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Derive image name
+        id: img
+        run: |
+          if [ "${{ matrix.component }}" = "frontend" ]; then
+            echo "IMAGE=${{ secrets.DOCKER_USERNAME }}/quran-frontend" >> $GITHUB_OUTPUT
+          else
+            echo "IMAGE=${{ secrets.DOCKER_USERNAME }}/quran-backend" >> $GITHUB_OUTPUT
+          fi
 
       - name: Telegram — start ${{ matrix.component }}
         if: ${{ github.event_name != 'pull_request' }}
@@ -54,7 +57,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ matrix.image }}
+          images: ${{ steps.img.outputs.IMAGE }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -76,7 +79,7 @@ jobs:
       - name: Telegram — success ${{ matrix.component }}
         if: ${{ success() && github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="✅ *Build done* — ${{ matrix.component }}\nImage: ${{ matrix.image }}\nTags:\n${{ steps.meta.outputs.tags }}"
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="✅ *Build done* — ${{ matrix.component }}\nImage: ${{ steps.img.outputs.IMAGE }}\nTags:\n${{ steps.meta.outputs.tags }}"
 
       - name: Telegram — failed ${{ matrix.component }}
         if: ${{ failure() && github.event_name != 'pull_request' }}
@@ -91,6 +94,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Set image names
+        id: names
+        run: |
+          echo "FRONT=${{ secrets.DOCKER_USERNAME }}/quran-frontend" >> $GITHUB_OUTPUT
+          echo "BACK=${{ secrets.DOCKER_USERNAME }}/quran-backend" >> $GITHUB_OUTPUT
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -101,10 +110,10 @@ jobs:
           name: Release ${{ github.ref_name }}
           body: |
             Images pushed:
-            - ${{ env.FRONT_IMAGE }}:${{ github.ref_name }}
-            - ${{ env.BACK_IMAGE }}:${{ github.ref_name }}
+            - ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}
+            - ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}
             Also tagged as `latest`.
 
       - name: Telegram — release
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🚀 *Release* ${{ github.ref_name }} published\nImages:\n- ${{ env.FRONT_IMAGE }}:${{ github.ref_name }}\n- ${{ env.BACK_IMAGE }}:${{ github.ref_name }}"
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🚀 *Release* ${{ github.ref_name }} published\nImages:\n- ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}\n- ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}"
