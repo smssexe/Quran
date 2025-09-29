@@ -59,8 +59,8 @@ jobs:
         with:
           images: ${{ steps.img.outputs.IMAGE }}
           tags: |
+            type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
             type=ref,event=branch
-            type=ref,event=tag
             type=sha,format=short
           flavor: |
             latest=true
