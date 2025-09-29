@@ -1,0 +1,25 @@
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from datetime import datetime
+
+class OTPRequest(BaseModel):
+    identifier: str = Field(..., description="email یا شماره موبایل")
+
+class OTPVerify(BaseModel):
+    identifier: str
+    code: str
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+class UserOut(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
