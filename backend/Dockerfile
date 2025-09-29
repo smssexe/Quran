@@ -5,6 +5,7 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 # Note: no JWT_SECRET baked in; pass it at runtime via environment
+#OK
 ENV HOST=0.0.0.0 PORT=8000 DATABASE_URL=sqlite:///./app.db CORS_ORIGINS=http://localhost:3000
 EXPOSE 8000
 CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8000"]
