@@ -38,7 +38,8 @@ jobs:
       - name: Telegram — start ${{ matrix.component }}
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🛠 *Build start* — ${{ matrix.component }}\nRepo: ${{ github.repository }}\nRef: ${{ github.ref_name }}"
+          message=$(printf '%s\n%s\n%s\n' "🛠 *Build start* — ${{ matrix.component }}" "Repo: ${{ github.repository }}" "Ref: ${{ github.ref_name }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -60,8 +61,8 @@ jobs:
           images: ${{ steps.img.outputs.IMAGE }}
           tags: |
             type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
-            type=ref,event=tag
-            type=ref,event=branch
+            type=ref,event=tag,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=ref,event=branch,enable=${{ startsWith(github.ref, 'refs/heads/') }}
             type=sha,format=short
           flavor: |
             latest=true
@@ -80,12 +81,14 @@ jobs:
       - name: Telegram — success ${{ matrix.component }}
         if: ${{ success() && github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="✅ *Build done* — ${{ matrix.component }}\nImage: ${{ steps.img.outputs.IMAGE }}\nTags:\n${{ steps.meta.outputs.tags }}"
+          message=$(printf '%s\n%s\n%s\n%s\n' "✅ *Build done* — ${{ matrix.component }}" "Image: ${{ steps.img.outputs.IMAGE }}" "Tags:" "${{ steps.meta.outputs.tags }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
 
       - name: Telegram — failed ${{ matrix.component }}
         if: ${{ failure() && github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="❌ *Build failed* — ${{ matrix.component }}\nRepo: ${{ github.repository }}\nRef: ${{ github.ref_name }}"
+          message=$(printf '%s\n%s\n%s\n' "❌ *Build failed* — ${{ matrix.component }}" "Repo: ${{ github.repository }}" "Ref: ${{ github.ref_name }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
 
   release:
     name: Create GitHub Release
@@ -117,5 +120,5 @@ jobs:
 
       - name: Telegram — release
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🚀 *Release* ${{ github.ref_name }} published\nImages:\n- ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}\n- ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}"
-
+          message=$(printf '%s\n%s\n%s\n%s\n' "🚀 *Release* ${{ github.ref_name }} published" "Images:" "- ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}" "- ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
