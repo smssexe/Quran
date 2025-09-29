@@ -62,8 +62,6 @@ jobs:
           tags: |
             ${{ github.ref_name }}
             latest
-          flavor: |
-            latest=true
 
       - name: Build & Push
         uses: docker/build-push-action@v6
