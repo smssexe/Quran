@@ -60,6 +60,7 @@ jobs:
           images: ${{ steps.img.outputs.IMAGE }}
           tags: |
             type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=ref,event=tag
             type=ref,event=branch
             type=sha,format=short
           flavor: |
@@ -117,3 +118,4 @@ jobs:
       - name: Telegram — release
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🚀 *Release* ${{ github.ref_name }} published\nImages:\n- ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}\n- ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}"
+
