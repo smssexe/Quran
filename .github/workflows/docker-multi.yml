@@ -26,6 +26,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          git fetch --tags
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+          echo "Latest tag: $latest_tag"
+          if [ -z "$latest_tag" ]; then
+            echo "version=0.0.1" >> $GITHUB_OUTPUT
+          else
+            IFS='.' read -r major minor patch <<< "${latest_tag#v}"
+            patch=$((patch + 1))
+            echo "version=${major}.${minor}.${patch}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Derive image name
         id: img
         run: |
@@ -38,7 +52,8 @@ jobs:
       - name: Telegram — start ${{ matrix.component }}
         if: ${{ github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🛠 *Build start* — ${{ matrix.component }}\nRepo: ${{ github.repository }}\nRef: ${{ github.ref_name }}"
+          message=$(printf '%s\n%s\n%s\n' "🛠 *Build start* — ${{ matrix.component }}" "Repo: ${{ github.repository }}" "Ref: ${{ github.ref_name }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -59,11 +74,8 @@ jobs:
         with:
           images: ${{ steps.img.outputs.IMAGE }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,format=short
-          flavor: |
-            latest=true
+            v${{ steps.get_tag.outputs.version }} 
+            latest
 
       - name: Build & Push
         uses: docker/build-push-action@v6
@@ -71,20 +83,20 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ${{ steps.meta.outputs.tags }}
 
       - name: Telegram — success ${{ matrix.component }}
         if: ${{ success() && github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="✅ *Build done* — ${{ matrix.component }}\nImage: ${{ steps.img.outputs.IMAGE }}\nTags:\n${{ steps.meta.outputs.tags }}"
+          message=$(printf '%s\n%s\n%s\n%s\n' "✅ *Build done* — ${{ matrix.component }}" "Image: ${{ steps.img.outputs.IMAGE }}" "Tags:" "${{ steps.meta.outputs.tags }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
 
       - name: Telegram — failed ${{ matrix.component }}
         if: ${{ failure() && github.event_name != 'pull_request' }}
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="❌ *Build failed* — ${{ matrix.component }}\nRepo: ${{ github.repository }}\nRef: ${{ github.ref_name }}"
+          message=$(printf '%s\n%s\n%s\n' "❌ *Build failed* — ${{ matrix.component }}" "Repo: ${{ github.repository }}" "Ref: ${{ github.ref_name }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
 
   release:
     name: Create GitHub Release
@@ -116,4 +128,5 @@ jobs:
 
       - name: Telegram — release
         run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}"           -d parse_mode="Markdown"           -d text="🚀 *Release* ${{ github.ref_name }} published\nImages:\n- ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}\n- ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}"
+          message=$(printf '%s\n%s\n%s\n%s\n' "🚀 *Release* ${{ github.ref_name }} published" "Images:" "- ${{ steps.names.outputs.FRONT }}:${{ github.ref_name }}" "- ${{ steps.names.outputs.BACK }}:${{ github.ref_name }}")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d parse_mode="Markdown" --data-urlencode "text=$message"
