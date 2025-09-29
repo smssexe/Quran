@@ -26,6 +26,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          git fetch --tags
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+          echo "Latest tag: $latest_tag"
+          if [ -z "$latest_tag" ]; then
+            echo "version=0.0.1" >> $GITHUB_OUTPUT
+          else
+            IFS='.' read -r major minor patch <<< "${latest_tag#v}"
+            patch=$((patch + 1))
+            echo "version=${major}.${minor}.${patch}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Derive image name
         id: img
         run: |
@@ -60,7 +74,7 @@ jobs:
         with:
           images: ${{ steps.img.outputs.IMAGE }}
           tags: |
-            ${{ github.ref_name }}
+            v${{ steps.get_tag.outputs.version }} 
             latest
 
       - name: Build & Push
