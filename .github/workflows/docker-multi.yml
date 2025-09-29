@@ -60,8 +60,8 @@ jobs:
         with:
           images: ${{ steps.img.outputs.IMAGE }}
           tags: |
-            type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
-            latest=true
+            ${{ github.ref_name }}
+            latest
           flavor: |
             latest=true
 
